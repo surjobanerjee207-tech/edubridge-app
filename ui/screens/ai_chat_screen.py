@@ -1,12 +1,16 @@
 import flet as ft
 import threading
+import base64
+import os
 from ui.theme import GlassColors
 from database import get_dashboard_data
 from ai_engine.client import OllamaClient
+import tkinter as tk
+from tkinter import filedialog
 
 C = GlassColors() # Refresh comment
 
-def ai_chat_screen(page: ft.Page):
+def ai_chat_screen(page: ft.Page, file_picker=None):
     client = OllamaClient()
     user_data = get_dashboard_data()
     
@@ -155,12 +159,97 @@ def ai_chat_screen(page: ft.Page):
 
         return ft.Row([typing_bubble], alignment=ft.MainAxisAlignment.START), d1, d2, d3, _pulse, state
 
+    # File Attachment State
+    attached_files = [] # List of {'name': str, 'type': str, 'content': str/base64}
+    
+    def pick_files_native(e):
+        root = tk.Tk()
+        root.withdraw()
+        root.wm_attributes("-topmost", True)
+        paths = filedialog.askopenfilenames(
+            title="Select files or photos",
+            filetypes=[
+                ("Images", "*.png *.jpg *.jpeg *.webp"),
+                ("Documents", "*.pdf *.txt"),
+                ("All files", "*.*")
+            ]
+        )
+        root.destroy()
+        
+        if not paths: return
+        
+        for path in paths:
+            file_name = os.path.basename(path)
+            file_ext = os.path.splitext(file_name)[1].lower()
+            
+            try:
+                with open(path, "rb") as file_data:
+                    raw_bytes = file_data.read()
+                    
+                if file_ext in [".png", ".jpg", ".jpeg", ".webp"]:
+                    b64 = base64.b64encode(raw_bytes).decode("utf-8")
+                    attached_files.append({"name": file_name, "type": "image", "content": b64})
+                elif file_ext == ".pdf":
+                    try:
+                        from pypdf import PdfReader
+                        reader = PdfReader(path)
+                        text = ""
+                        for page_num in range(len(reader.pages)):
+                            text += reader.pages[page_num].extract_text()
+                        attached_files.append({"name": file_name, "type": "pdf", "content": text})
+                    except Exception as ex:
+                        chat_history.controls.append(ft.Text(f"Error reading PDF: {str(ex)}", color="red"))
+                else:
+                    try:
+                        text = raw_bytes.decode("utf-8")
+                        attached_files.append({"name": file_name, "type": "text", "content": text})
+                    except:
+                        chat_history.controls.append(ft.Text(f"Unsupported file type: {file_ext}", color="orange"))
+            except Exception as ex:
+                chat_history.controls.append(ft.Text(f"Error opening file: {str(ex)}", color="red"))
+        
+        update_attachment_ui()
+        page.update()
+
+    file_picker = None
+
+    attachment_preview = ft.Row(spacing=10, scroll=ft.ScrollMode.AUTO)
+    
+    def update_attachment_ui():
+        attachment_preview.controls.clear()
+        for i, f in enumerate(attached_files):
+            attachment_preview.controls.append(
+                ft.Container(
+                    content=ft.Row([
+                        ft.Icon(ft.Icons.IMAGE if f['type']=='image' else ft.Icons.PICTURE_AS_PDF if f['type']=='pdf' else ft.Icons.INSERT_DRIVE_FILE, size=12, color="white"),
+                        ft.Text(f['name'][:10]+"...", size=10, color="white"),
+                        ft.IconButton(ft.Icons.CLOSE, icon_size=10, icon_color="white60", on_click=lambda _, idx=i: remove_attachment(idx))
+                    ], spacing=4),
+                    bgcolor="#33ffffff",
+                    padding=ft.Padding(8, 4, 4, 4),
+                    border_radius=15,
+                )
+            )
+        attachment_preview.visible = len(attached_files) > 0
+        page.update()
+
+    def remove_attachment(index):
+        if 0 <= index < len(attached_files):
+            attached_files.pop(index)
+            update_attachment_ui()
+
     def send_message(e, preset_query=None):
         query = preset_query or input_field.value
-        if not query: return
+        if not query and not attached_files: return
 
         input_field.value = ""
-        chat_history.controls.append(_chat_bubble(query, is_user=True))
+        
+        # Build user display message
+        display_msg = query
+        if attached_files:
+            display_msg += "\n\n*Attached files:* " + ", ".join([f['name'] for f in attached_files])
+            
+        chat_history.controls.append(_chat_bubble(display_msg, is_user=True))
 
         typing_row, d1, d2, d3, pulse_fn, pulse_state = _typing_indicator()
         chat_history.controls.append(typing_row)
@@ -177,8 +266,32 @@ def ai_chat_screen(page: ft.Page):
             chat_history.controls.remove(typing_row)
             chat_history.controls.append(ai_bubble_container)
             
+            # Build message payload for multi-modal
+            user_content_list = []
+            if query:
+                user_content_list.append({"type": "text", "text": query})
+            
+            for f in attached_files:
+                if f['type'] == 'image':
+                    user_content_list.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{f['content']}"}
+                    })
+                else:
+                    # Append file content as text context
+                    user_content_list.append({
+                        "type": "text", 
+                        "text": f"\n[File Content: {f['name']}]\n{f['content']}\n"
+                    })
+            
+            # Clear attachments after sending
+            attached_files.clear()
+            update_attachment_ui()
+
             full_text = ""
-            for chunk in client.stream_career_advice(query, user_data):
+            messages = [{"role": "user", "content": user_content_list}]
+            
+            for chunk in client.stream(messages, system_prompt=client._get_sys_prompt(user_data)):
                 pulse_state.running = False # Stop pulsing on first chunk
                 full_text += chunk
                 markdown_control.value = full_text
@@ -244,12 +357,20 @@ def ai_chat_screen(page: ft.Page):
                 padding=20,
                 border=ft.Border.all(1, "#1fffffff")
             ),
+            # Attachment Preview Area
+            attachment_preview,
             # ── Modern pill input bar ──────────────────────────────────────────
             ft.Container(
                 content=ft.Row([
                     ft.Container(
-                        content=ft.Icon(ft.Icons.AUTO_AWESOME, color="#6366f1", size=16),
-                        padding=ft.Padding.only(left=6, right=2),
+                        content=ft.IconButton(
+                            icon=ft.Icons.ADD, 
+                            icon_color="#6366f1", 
+                            icon_size=20,
+                            on_click=pick_files_native, 
+                            tooltip="Attach photos/files"
+                        ),
+                        padding=ft.Padding.only(left=0, right=0),
                     ),
                     input_field,
                     # Dedicated Paste Button (Fix for Win+V issues)

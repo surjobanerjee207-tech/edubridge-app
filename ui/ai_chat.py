@@ -10,8 +10,8 @@ class AIChatScreen(ft.Column):
         self.summarizer = DocumentSummarizer()
         self.expand = True
         
-        self.file_picker = ft.FilePicker(on_result=self.on_file_result)
-        self.page.overlay.append(self.file_picker)
+        # self.file_picker = ft.FilePicker(on_result=self.on_file_result)
+        # self.page.overlay.append(self.file_picker)
         
         self.result_area = ft.Column(scroll=ft.ScrollMode.ALWAYS, expand=True)
         self.loading_spinner = ft.ProgressRing(visible=False)

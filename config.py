@@ -8,7 +8,7 @@ class Config:
     # Switched from local Ollama to Groq Cloud API. Note: Groq decommissioned Gemma models, using Llama 3.1 8B as fallback.
     GROQ_API_KEY = os.getenv("GROQ_API_KEY", "") 
     OLLAMA_HOST = os.getenv("OLLAMA_HOST", "https://api.groq.com/openai/v1/chat/completions")
-    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama-3.1-8b-instant")
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama-3.2-11b-vision-preview")
     DB_PATH = os.getenv("DB_PATH", "edubridge.db")
     
     # AI Ethics & Disclaimers

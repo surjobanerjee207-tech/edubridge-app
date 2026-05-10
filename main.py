@@ -55,6 +55,9 @@ def main(page: ft.Page):
     sidebar_ref   = ft.Ref[ft.Container]()
     content_ref   = ft.Ref[ft.Container]()
 
+    # Global FilePicker removed in favor of native dialogs
+    file_picker = None
+
     def get_screen(index):
         mapping = {
             0:  lambda: dashboard_screen(page, navigate_to=change_view),
@@ -66,7 +69,7 @@ def main(page: ft.Page):
             6:  lambda: placeholder_screen(page, "Job Board",      ft.Icons.WORK_OUTLINE),
             7:  lambda: interview_prep_screen(page),
             8:  lambda: placeholder_screen(page, "Mentorship",     ft.Icons.PEOPLE_OUTLINE),
-            9:  lambda: ai_chat_screen(page),          # Course Library → AI Career Copilot
+            9:  lambda: ai_chat_screen(page, file_picker=file_picker),          # Course Library → AI Career Copilot
             10: lambda: placeholder_screen(page, "Achievements",   ft.Icons.EMOJI_EVENTS),
             11: lambda: planner_screen(page),           # Schedule → Planner
             12: lambda: wellbeing_screen(page),         # Community → Wellbeing
