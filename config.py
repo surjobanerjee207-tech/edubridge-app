@@ -5,10 +5,13 @@ load_dotenv()
 
 class Config:
     APP_NAME = "EduBridge AI"
-    # Switched from local Ollama to Groq Cloud API. Note: Groq decommissioned Gemma models, using Llama 3.1 8B as fallback.
-    GROQ_API_KEY = os.getenv("GROQ_API_KEY", "") 
-    OLLAMA_HOST = os.getenv("OLLAMA_HOST", "https://api.groq.com/openai/v1/chat/completions")
-    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama-3.2-11b-vision-preview")
+    
+    # Local AI Settings (LM Studio / Ollama)
+    AI_PROVIDER = "local" 
+    AI_HOST = os.getenv("AI_HOST", "http://localhost:1234/v1")
+    AI_MODEL = os.getenv("AI_MODEL", "google/gemma-3-4b")
+    LOCAL_MODEL_PATH = os.getenv("LOCAL_MODEL_PATH", r"D:\LM models\lmstudio-community")
+    
     DB_PATH = os.getenv("DB_PATH", "edubridge.db")
     
     # AI Ethics & Disclaimers
@@ -18,4 +21,4 @@ class Config:
     PRIMARY_COLOR = "#2196F3"
     SECONDARY_COLOR = "#0D47A1"
     DARK_MODE = True
-    DYSLEXIA_FONT = "OpenDyslexic"  # Fallback to standard if not found
+    DYSLEXIA_FONT = "OpenDyslexic"

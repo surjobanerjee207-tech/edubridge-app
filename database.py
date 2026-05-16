@@ -182,6 +182,12 @@ def init_db():
         status TEXT DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
+    # ── search history ───────────────────────────────────────────────────────
+    c.execute('''CREATE TABLE IF NOT EXISTS search_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        query TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
 
     # ── seed data (only once) ────────────────────────────────────────────────
     today = date.today()

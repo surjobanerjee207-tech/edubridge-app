@@ -22,7 +22,7 @@ def main(page: ft.Page):
 
     page.title        = Config.APP_NAME
     page.theme_mode   = ft.ThemeMode.DARK
-    page.bgcolor      = "#05091e"
+    page.bgcolor      = "transparent"
     page.padding      = 0
     page.spacing      = 0
     page.window_width      = 1280
@@ -30,16 +30,25 @@ def main(page: ft.Page):
     page.window_min_width  = 960   # ensures sidebar + content always both visible
     page.window_min_height = 600
 
+    page.fonts = {
+        "Inter": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    }
     page.theme = AppTheme().get_page_theme()
+    page.theme.font_family = "Inter"
 
-    # ── space background image with dark overlay ──────────────────────────────
+    # ── tech tomorrow deep gradient ───────────────────────
     page.decoration = ft.BoxDecoration(
-        image=ft.DecorationImage(
-            src="assets/bg_space.jpg",
-            fit=ft.BoxFit.COVER,
-            opacity=0.28,
+        gradient=ft.LinearGradient(
+            begin=ft.alignment.Alignment(-1, -1),
+            end=ft.alignment.Alignment(1, 1),
+            colors=["#0a0a1a", "#0d1b2a", "#0a1628"],
+            stops=[0.0, 0.5, 1.0]
         ),
-        bgcolor="#05091e",
+        image=ft.DecorationImage(
+            src="assets/starry_mountain_bg.png",
+            fit=ft.BoxFit.COVER,
+            opacity=0.4,
+        ),
     )
 
     # ── restore saved theme preference ───────────────────────────────────────
@@ -84,7 +93,33 @@ def main(page: ft.Page):
         if content_ref.current:
             content_ref.current.bgcolor = "transparent"
             content_ref.current.content = get_screen(index)
+        
+        # Update FAB state
+        is_copilot = index == 9
+        if is_copilot:
+            # Mic mode (on AI Copilot page)
+            copilot_btn.content = ft.Icon(ft.Icons.MIC_ROUNDED, color="#ffffff", size=24)
+            copilot_btn.width = 60
+            copilot_btn.border_radius = 30
+            copilot_btn.tooltip = "Click to talk"
+        else:
+            # Default mode (any other page)
+            copilot_btn.content = ft.Row([
+                ft.Text("✦", color="#ffffff", size=14, weight=ft.FontWeight.BOLD),
+                ft.Text("AI Copilot", color="#ffffff", weight=ft.FontWeight.BOLD, size=13),
+            ], spacing=4, alignment=ft.MainAxisAlignment.CENTER)
+            copilot_btn.width = 130
+            copilot_btn.border_radius = 25
+            copilot_btn.tooltip = "Open AI Copilot"
+            
         page.update()
+
+    def on_fab_click(e):
+        if current_index[0] == 9:
+            # Already on Copilot, trigger the voice recording!
+            page.pubsub.send_all("trigger_mic")
+        else:
+            change_view(9)
 
     def refresh_current_screen():
         change_view(current_index[0])
@@ -106,10 +141,10 @@ def main(page: ft.Page):
 
     copilot_btn = ft.Container(
         content=ft.Row([
-            ft.Icon(ft.Icons.AUTO_AWESOME, color="#ffffff", size=20),
+            ft.Text("✦", color="#ffffff", size=14, weight=ft.FontWeight.BOLD),
             ft.Text("AI Copilot", color="#ffffff", weight=ft.FontWeight.BOLD, size=13),
-        ], spacing=8, alignment=ft.MainAxisAlignment.CENTER),
-        width=140,
+        ], spacing=4, alignment=ft.MainAxisAlignment.CENTER),
+        width=130,
         height=50,
         gradient=ft.LinearGradient(
             begin=ft.alignment.Alignment(-1, -1),
@@ -117,17 +152,35 @@ def main(page: ft.Page):
             colors=["#6366f1", "#a855f7"]
         ),
         border_radius=25,
+        alignment=ft.alignment.Alignment(0, 0),
         shadow=ft.BoxShadow(
             blur_radius=20, spread_radius=0,
             color="#806366f1", offset=ft.Offset(0, 8)
         ),
         animate=ft.Animation(300, ft.AnimationCurve.EASE_OUT),
-        on_click=lambda e: change_view(9), # Index 9 is AI Copilot
+        on_click=on_fab_click,
         on_hover=lambda e: setattr(e.control, 'scale', 1.05 if e.data == "true" else 1.0) or e.control.update(),
     )
 
     page.add(
         ft.Stack([
+            # Glow Orb 1 (Top Left)
+            ft.Container(
+                width=400, height=400,
+                left=-150, top=-150,
+                bgcolor="#1E6c63ff", # 12% opacity
+                blur=ft.Blur(100, 100),
+                border_radius=200,
+            ),
+            # Glow Orb 2 (Bottom Right)
+            ft.Container(
+                width=350, height=350,
+                right=-100, bottom=-100,
+                bgcolor="#198b5cf6", # 10% opacity
+                blur=ft.Blur(80, 80),
+                border_radius=175,
+            ),
+            # Main Layout
             ft.Row([
                 sidebar_host,
                 ft.VerticalDivider(width=1, color="#1e293b"),

@@ -435,19 +435,22 @@ def dashboard_screen(page: ft.Page, navigate_to=None):
     ])
 
     # ── skill proficiency ─────────────────────────────────────────────────────
-    progress_bars = []
+    skill_animation_data = []
     skill_bar_widgets = []
     for i, (name, pct) in enumerate(skill_rows):
         accent = SKILL_ACCENTS.get(name, SKILL_FALLBACK[i % len(SKILL_FALLBACK)])
-        bar    = ft.ProgressBar(
+        bar = ft.ProgressBar(
             value=0, color=accent,
             bgcolor="#14ffffff", height=6, border_radius=99,
         )
-        progress_bars.append((bar, pct / 100))
+        pct_text = ft.Text("0%", size=13, color=C.TEXT_55)
+
+        skill_animation_data.append((bar, pct_text, pct))
+
         skill_bar_widgets.append(ft.Column([
             ft.Row([
                 ft.Text(name, size=13, color=C.TEXT_WHITE, expand=True),
-                ft.Text(f"{pct}%", size=13, color=C.TEXT_55),
+                pct_text,
             ]),
             bar,
         ], spacing=6))
@@ -467,13 +470,50 @@ def dashboard_screen(page: ft.Page, navigate_to=None):
 
     def _animate_bars():
         try:
-            for bar, target in progress_bars:
-                bar.value = target
-            page.update()
+            import time
+            start_time = time.time()
+            duration = 0.8  # 800ms fill per bar
+            stagger = 0.15  # 150ms stagger between bars
+            fps = 60
+            frame_time = 1 / fps
+
+            total_needed = duration + (len(skill_animation_data) - 1) * stagger
+
+            while True:
+                elapsed = time.time() - start_time
+                if elapsed > total_needed + 0.1:
+                    # Final cleanup to ensure exact targets
+                    for bar, pct_text, target in skill_animation_data:
+                        bar.value = target / 100
+                        pct_text.value = f"{int(target)}%"
+                    page.update()
+                    break
+
+                for i, (bar, pct_text, target) in enumerate(skill_animation_data):
+                    delay = i * stagger
+                    if elapsed < delay:
+                        continue
+
+                    bar_elapsed = elapsed - delay
+                    if bar_elapsed > duration:
+                        bar.value = target / 100
+                        pct_text.value = f"{int(target)}%"
+                        continue
+
+                    # Animation with cubic ease-out
+                    p = bar_elapsed / duration
+                    eased = 1 - (1 - p) ** 3
+                    bar.value = (target / 100) * eased
+                    pct_text.value = f"{int(target * eased)}%"
+
+                page.update()
+                time.sleep(frame_time)
         except Exception:
             pass
-    if progress_bars:
-        threading.Timer(0.3, _animate_bars).start()
+
+    if skill_animation_data:
+        # Wait for the entrance animation to settle
+        threading.Timer(1.0, _animate_bars).start()
 
     # ── recent activity ───────────────────────────────────────────────────────
     act_type_colors = ["#22c55e", "#6366f1", "#f59e0b", "#8b5cf6", "#14b8a6"]

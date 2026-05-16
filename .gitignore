@@ -8,6 +8,7 @@ __pycache__/
 *$py.class
 venv/
 .venv/
+new_venv/
 env/
 build/
 dist/

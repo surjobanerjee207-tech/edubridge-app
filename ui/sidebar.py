@@ -1,5 +1,6 @@
 import flet as ft
 from ui.theme import GlassColors
+from utils.history_manager import load_search_history
 
 C = GlassColors()
 SIDEBAR_SOLID = "#0d1b3e"    # deep navy — no alpha ambiguity
@@ -36,7 +37,7 @@ def create_sidebar(page: ft.Page, active_index: int, navigate_to):
     def section_label(text):
         return ft.Container(
             content=ft.Text(
-                text, size=9, color=C.TEXT_30,
+                text.upper(), size=10, color="#59ffffff",
                 weight=ft.FontWeight.W_600,
             ),
             padding=ft.Padding.only(left=14, top=20, bottom=6),
@@ -47,8 +48,8 @@ def create_sidebar(page: ft.Page, active_index: int, navigate_to):
         is_focus   = badge == "FOCUS"
         
         # Base colors
-        bg         = C.ACTIVE_NAV if is_active else "transparent"
-        text_color = "#a5b4fc" if is_active else C.TEXT_55
+        bg         = "#1Affffff" if is_active else "transparent"
+        text_color = "#ffffff" if is_active else C.TEXT_55
         
         # Override for high-focus AI button
         if is_focus:
@@ -60,7 +61,7 @@ def create_sidebar(page: ft.Page, active_index: int, navigate_to):
             text_color = "#ffffff"
         
         border_l = ft.Border(
-            left=ft.BorderSide(2, C.PRIMARY if is_active and not is_focus else "transparent"),
+            left=ft.BorderSide(3, "#6c63ff" if is_active and not is_focus else "transparent"),
         )
 
         badge_widget = ft.Container(
@@ -84,7 +85,7 @@ def create_sidebar(page: ft.Page, active_index: int, navigate_to):
                 return  # active focus item keeps its gradient
             hovering = e.data == "true"
             container.offset = ft.Offset(-0.02 if not hovering else 0, 0) if not hovering else ft.Offset(0.02, 0)
-            container.bgcolor = "#1e2744" if hovering else base_bg
+            container.bgcolor = "#0Dffffff" if hovering else base_bg
             container.update()
 
         item = ft.Container(
@@ -117,12 +118,40 @@ def create_sidebar(page: ft.Page, active_index: int, navigate_to):
         for label, index, badge in items:
             nav_items.append(nav_item(label, index, badge))
 
+    # ── Search History Section ───────────────────────────────────────────────
+    history = load_search_history(page)
+    if history:
+        nav_items.append(section_label("SEARCH HISTORY"))
+        for h in history[:8]: # Last 8 searches
+            query = h["q"]
+            history_btn = ft.Container(
+                content=ft.Row([
+                    ft.Icon(ft.Icons.HISTORY, size=14, color=C.TEXT_55),
+                    ft.Text(query if len(query) < 22 else query[:20]+"...", 
+                            size=12, color=C.TEXT_55, weight=ft.FontWeight.BOLD, expand=True),
+                ], spacing=10),
+                padding=ft.Padding.symmetric(horizontal=14, vertical=8),
+                border_radius=8,
+                animate=ft.Animation(200, ft.AnimationCurve.EASE_OUT),
+                on_hover=lambda e: (
+                    setattr(e.control, 'bgcolor', "#1a1a1a" if e.data == "true" else "transparent"),
+                    setattr(e.control, 'scale', 1.05 if e.data == "true" else 1.0),
+                    e.control.update()
+                ),
+                on_click=lambda e, q=query: (
+                    navigate_to(9), # Switch to AI Chat
+                    page.pubsub.send_all({"type": "history_search", "query": q}) # Trigger search
+                ),
+            )
+            nav_items.append(history_btn)
+
     bottom_items = [nav_item(label, index, badge) for label, index, badge in BOTTOM_NAV]
 
     return ft.Container(
         width=240,
-        bgcolor=SIDEBAR_SOLID,
-        border=ft.Border(right=ft.BorderSide(1, "#1affffff")),
+        bgcolor="#0Affffff", # rgba(255,255,255,0.04)
+        blur=ft.Blur(20, 20, ft.BlurTileMode.MIRROR),
+        border=ft.Border(right=ft.BorderSide(1, "#12ffffff")), # rgba(255,255,255,0.07)
         content=ft.Column([
             # ── Logo ─────────────────────────────────────────────────────────
             ft.Container(

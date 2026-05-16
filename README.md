@@ -17,7 +17,7 @@ Download and install Ollama from [ollama.com](https://ollama.com).
 ### 2. Pull the AI Model
 Open your terminal and run:
 ```bash
-ollama pull gemma2:9b
+ollama pull gemma-3-4b
 ```
 
 ### 3. Install Dependencies
